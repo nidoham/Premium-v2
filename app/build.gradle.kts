@@ -41,7 +41,7 @@ android {
 }
 
 dependencies {
-    implementation("com.github.nidoham:Extractor:90a1d8aaa0")
+    implementation("com.github.nidoham:Extractor:8cc9861531")
 
     // Timber (Logging)
     implementation(libs.timber)
@@ -54,6 +54,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
