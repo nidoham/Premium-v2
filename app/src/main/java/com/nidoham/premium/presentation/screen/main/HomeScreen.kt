@@ -75,7 +75,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     .offset {
                         IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt())
                     }
-                    .background(GlassTheme.colors.surface) // Matches your app background
+                    .background(GlassTheme.colors.background) // Matches your app background
             ) {
                 CategoryBar(
                     categories = categories,
