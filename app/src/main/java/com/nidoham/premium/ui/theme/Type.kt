@@ -37,7 +37,7 @@ private val CenteredLineHeight: LineHeightStyle = LineHeightStyle(
 // MATERIAL 3 TYPOGRAPHY HIERARCHY
 // ════════════════════════════════════════════════════════════════════
 
-val GlassTypography: Typography = Typography(
+val AppTypography: Typography = Typography(
     // ── Display: Large Hero Text ─────────────────────────────────────
     displayLarge = TextStyle(
         fontFamily = GlassFontFamily,

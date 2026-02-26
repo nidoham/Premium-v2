@@ -52,6 +52,8 @@ dependencies {
     implementation(libs.newpipeextractor)
     implementation(libs.okhttp)
 
+    implementation(libs.androidx.datastore.preferences)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

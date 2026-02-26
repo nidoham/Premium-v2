@@ -1,4 +1,3 @@
-@file:Suppress("unused")
 package com.nidoham.premium.ui.theme
 
 import android.app.Activity
@@ -23,117 +22,98 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
-// ╔════════════════════════════════════════════════════════════════════╗
-// ║  GLASS MORPHISM THEME ENGINE (2026)                                ║
-// ║  Orchestrates Colors, Type, and Glass Physics across the UI.       ║
-// ╚════════════════════════════════════════════════════════════════════╝
+// ── Shapes ───────────────────────────────────────────────────────────
 
-// ════════════════════════════════════════════════════════════════════
-// COMPOSITION LOCALS
-// ════════════════════════════════════════════════════════════════════
-
-/**
- * Provides the current rendering specification for Glass surfaces.
- * This allows nested components (like a card inside a sidebar) to know
- * how much blur or noise they should apply.
- */
-val LocalGlassSpec = staticCompositionLocalOf { GlassPresets.Widget }
-
-/**
- * Provides the display calibration profile.
- * Used by low-level graphics components to adjust gamma for OLED/LCD.
- */
-val LocalDisplayProfile = staticCompositionLocalOf { DisplayProfile.StandardLCD }
-
-// ════════════════════════════════════════════════════════════════════
-// SHAPES SYSTEM
-// ════════════════════════════════════════════════════════════════════
-
-/**
- * Modern "Squircle-like" rounding.
- * In 2026, interfaces use generous corner radii to feel organic and fluid.
- */
-val GlassShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),    // Tags, tiny badges
-    small      = RoundedCornerShape(12.dp),   // Buttons, inputs
-    medium     = RoundedCornerShape(20.dp),   // Cards, small dialogs
-    large      = RoundedCornerShape(32.dp),   // Bottom sheets, large modals
-    extraLarge = RoundedCornerShape(48.dp)    // Full screen surfaces
+val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(6.dp),
+    small      = RoundedCornerShape(10.dp),
+    medium     = RoundedCornerShape(16.dp),
+    large      = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
-// ════════════════════════════════════════════════════════════════════
-// THEME ENTRY POINT
-// ════════════════════════════════════════════════════════════════════
+// ── CompositionLocal ──────────────────────────────────────────────────
 
 /**
- * **Admin Glass Theme**
+ * Provides the full [AppSettings] snapshot to the entire composition tree.
  *
- * The root theme composable for the application.
+ * Usage anywhere in the tree:
+ * ```kotlin
+ * val settings = LocalAppSettings.current
+ * if (settings.reducedMotion) { ... }
+ * ```
+ */
+val LocalAppSettings = staticCompositionLocalOf { AppSettings() }
+
+// ── Theme Entry Point ─────────────────────────────────────────────────
+
+/**
+ * Root theme composable. Wire it to [ThemeManager] in your Activity:
  *
- * @param darkTheme Whether to use the Dark (OLED) or Light (Clean) scheme.
- * @param dynamicColor Whether to use Android 12+ Wallpaper extraction (Material You).
- *                     Defaults to false to preserve the custom Glass brand identity.
- * @param displayProfile Hardware calibration profile (default: OLED for modern phones).
+ * ```kotlin
+ * val settings by themeManager.settings.collectAsStateWithLifecycle()
+ * PremiumTheme(settings = settings) { AppNavGraph() }
+ * ```
+ *
+ * @param settings     Full settings snapshot from [ThemeManager].
+ * @param systemIsDark Pass [isSystemInDarkTheme()] (default handles most cases).
  */
 @Composable
 fun PremiumTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // specific brand identity preferred over dynamic
-    displayProfile: DisplayProfile = if (darkTheme) DisplayProfile.OLED else DisplayProfile.StandardLCD,
+    settings: AppSettings = AppSettings(),
+    systemIsDark: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val view = LocalView.current
+    val view    = LocalView.current
+    val isDark  = settings.resolveIsDark(systemIsDark)
 
-    // 1. Resolve Color Scheme
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> GlassDarkScheme
-        else -> GlassLightScheme
+    val colorScheme: ColorScheme = when {
+        settings.dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        isDark -> if (settings.useHighContrast) DarkHighContrastColorScheme  else DarkColorScheme
+        else   -> if (settings.useHighContrast) LightHighContrastColorScheme else LightColorScheme
     }
 
-    // 2. Handle System Bars (Edge-to-Edge Glass)
+    val typography = if (settings.fontScale == FontScale.NORMAL) {
+        AppTypography
+    } else {
+        AppTypography.scale(settings.fontScale.multiplier)
+    }
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (context as? Activity)?.window ?: return@SideEffect
-
-            // Set bars to transparent so glass backgrounds show through
-            window.statusBarColor = Color.Transparent.toArgb()
+            window.statusBarColor     = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
-
             WindowCompat.getInsetsController(window, view).apply {
-                // Dark Content (Icons) on Light Theme, Light Content on Dark Theme
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
+                isAppearanceLightStatusBars     = !isDark
+                isAppearanceLightNavigationBars = !isDark
             }
         }
     }
 
-    // 3. Provide Theme & Custom Locals
-    CompositionLocalProvider(
-        LocalDisplayProfile provides displayProfile,
-        LocalGlassSpec provides GlassPresets.Widget // Default spec
-    ) {
+    CompositionLocalProvider(LocalAppSettings provides settings) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = GlassTypography,
-            shapes = GlassShapes,
-            content = content
+            typography  = typography,
+            shapes      = AppShapes,
+            content     = content
         )
     }
 }
 
-// ════════════════════════════════════════════════════════════════════
-// THEME ACCESSOR OBJECT
-// ════════════════════════════════════════════════════════════════════
+// ── AppTheme Accessor ────────────────────────────────────────────────
 
 /**
- * Convenient shorthand to access theme properties.
- * Usage: `GlassTheme.colors.primary` or `GlassTheme.spec.blurRadius`
+ * Shorthand for accessing theme tokens and app settings inside composables.
+ *
+ * ```kotlin
+ * Text(color = AppTheme.colors.primary)
+ * val isCompact = AppTheme.settings.compactLayout
+ * ```
  */
-object GlassTheme {
+object AppTheme {
     val colors: ColorScheme
         @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme
 
@@ -143,58 +123,70 @@ object GlassTheme {
     val shapes: Shapes
         @Composable @ReadOnlyComposable get() = MaterialTheme.shapes
 
-    val spec: GlassSpec
-        @Composable @ReadOnlyComposable get() = LocalGlassSpec.current
+    val settings: AppSettings
+        @Composable @ReadOnlyComposable get() = LocalAppSettings.current
 
-    val display: DisplayProfile
-        @Composable @ReadOnlyComposable get() = LocalDisplayProfile.current
+    /** `true` when the effective theme is dark (luminance-based). */
+    val isDark: Boolean
+        @Composable @ReadOnlyComposable get() =
+            MaterialTheme.colorScheme.background.luminance() < 0.5f
 }
 
-// ════════════════════════════════════════════════════════════════════
-// SPECIALIZED SURFACE WRAPPERS
-// ════════════════════════════════════════════════════════════════════
+// ── Typography Scaling ────────────────────────────────────────────────
 
 /**
- * Applies the specific visual physics for a **Side Navigation Drawer**.
- * Uses a medium blur and darker tint to separate from main content.
+ * Returns a copy of this [Typography] with every `fontSize` and `lineHeight`
+ * multiplied by [factor], honouring the user's [FontScale] preference.
  */
-@Composable
-fun SidebarTheme(
-    content: @Composable () -> Unit
-) {
-    CompositionLocalProvider(
-        LocalGlassSpec provides GlassPresets.Widget.copy(blurRadius = 36f, saturationBoost = 1.22f)
-    ) {
-        content()
-    }
-}
+private fun Typography.scale(factor: Float): Typography = copy(
+    displayLarge   = displayLarge.copy(
+        fontSize   = displayLarge.fontSize   * factor,
+        lineHeight = displayLarge.lineHeight * factor),
+    displayMedium  = displayMedium.copy(
+        fontSize   = displayMedium.fontSize  * factor,
+        lineHeight = displayMedium.lineHeight * factor),
+    displaySmall   = displaySmall.copy(
+        fontSize   = displaySmall.fontSize   * factor,
+        lineHeight = displaySmall.lineHeight * factor),
+    headlineLarge  = headlineLarge.copy(
+        fontSize   = headlineLarge.fontSize  * factor,
+        lineHeight = headlineLarge.lineHeight * factor),
+    headlineMedium = headlineMedium.copy(
+        fontSize   = headlineMedium.fontSize * factor,
+        lineHeight = headlineMedium.lineHeight * factor),
+    headlineSmall  = headlineSmall.copy(
+        fontSize   = headlineSmall.fontSize  * factor,
+        lineHeight = headlineSmall.lineHeight * factor),
+    titleLarge     = titleLarge.copy(
+        fontSize   = titleLarge.fontSize     * factor,
+        lineHeight = titleLarge.lineHeight   * factor),
+    titleMedium    = titleMedium.copy(
+        fontSize   = titleMedium.fontSize    * factor,
+        lineHeight = titleMedium.lineHeight  * factor),
+    titleSmall     = titleSmall.copy(
+        fontSize   = titleSmall.fontSize     * factor,
+        lineHeight = titleSmall.lineHeight   * factor),
+    bodyLarge      = bodyLarge.copy(
+        fontSize   = bodyLarge.fontSize      * factor,
+        lineHeight = bodyLarge.lineHeight    * factor),
+    bodyMedium     = bodyMedium.copy(
+        fontSize   = bodyMedium.fontSize     * factor,
+        lineHeight = bodyMedium.lineHeight   * factor),
+    bodySmall      = bodySmall.copy(
+        fontSize   = bodySmall.fontSize      * factor,
+        lineHeight = bodySmall.lineHeight    * factor),
+    labelLarge     = labelLarge.copy(
+        fontSize   = labelLarge.fontSize     * factor,
+        lineHeight = labelLarge.lineHeight   * factor),
+    labelMedium    = labelMedium.copy(
+        fontSize   = labelMedium.fontSize    * factor,
+        lineHeight = labelMedium.lineHeight  * factor),
+    labelSmall     = labelSmall.copy(
+        fontSize   = labelSmall.fontSize     * factor,
+        lineHeight = labelSmall.lineHeight   * factor),
+)
 
-/**
- * Applies the specific visual physics for a **Bottom Navigation Bar**.
- * High blur, low noise to ensure icon legibility.
- */
-@Composable
-fun NavigationBarTheme(
-    content: @Composable () -> Unit
-) {
-    CompositionLocalProvider(
-        LocalGlassSpec provides GlassPresets.NavigationBar
-    ) {
-        content()
-    }
-}
+// ── Luminance helper ──────────────────────────────────────────────────
 
-/**
- * Applies the specific visual physics for a **Modal/Dialog**.
- * Maximum blur to focus user attention on the foreground.
- */
-@Composable
-fun ModalTheme(
-    content: @Composable () -> Unit
-) {
-    CompositionLocalProvider(
-        LocalGlassSpec provides GlassPresets.Dialog
-    ) {
-        content()
-    }
-}
+private fun Color.luminance(): Float =
+    (0.2126 * red + 0.7152 * green + 0.0722 * blue).toFloat()

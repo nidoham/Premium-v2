@@ -17,6 +17,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -35,7 +36,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.nidoham.extractor.util.KioskTranslator
 import com.nidoham.premium.presentation.screen.main.home.ContentScreen
-import com.nidoham.premium.ui.theme.GlassTheme
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -46,16 +46,12 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val scope = rememberCoroutineScope()
 
-    // 1. Define exact height for the Category Bar
     val categoryBarHeight = 56.dp
     val density = LocalDensity.current
     val categoryBarHeightPx = with(density) { categoryBarHeight.toPx() }
 
-    // 2. Setup Scroll Behavior (EnterAlways = Hides on scroll down, shows on scroll up)
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
 
-    // 3. IMPORTANT: Tell the behavior strictly how tall the item to hide is.
-    // This ensures the scroll stops exactly when the bar is hidden.
     LaunchedEffect(categoryBarHeightPx) {
         scrollBehavior.state.heightOffsetLimit = -categoryBarHeightPx
     }
@@ -63,11 +59,9 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier
             .fillMaxSize()
-            // This connects the scroll gestures from the list to the top bar
             .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // 4. The Category Bar Container
-            // We apply the offset here. When scrolling down, heightOffset goes from 0 to -56dp
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -75,7 +69,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                     .offset {
                         IntOffset(x = 0, y = scrollBehavior.state.heightOffset.roundToInt())
                     }
-                    .background(GlassTheme.colors.background) // Matches your app background
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 CategoryBar(
                     categories = categories,
@@ -87,11 +81,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         }
     ) { innerPadding ->
-        // 5. The Content Pager
-        // We calculate the top padding dynamically.
-        // innerPadding.calculateTopPadding() gives us 56dp.
-        // scrollBehavior.state.heightOffset gives us (0 to -56dp).
-        // Result: When hidden, topPadding becomes 0dp, and the list fills the screen.
         val topPadding = innerPadding.calculateTopPadding() +
                 with(density) { scrollBehavior.state.heightOffset.toDp() }
 
@@ -99,12 +88,11 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = topPadding), // Dynamic padding creates the "Big Screen" effect
-            userScrollEnabled = true
+                .padding(top = topPadding),
         ) { pageIndex ->
             ContentScreen(
                 kiosk = categories[pageIndex],
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
         }
     }
@@ -114,45 +102,41 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 private fun CategoryBar(
     categories: List<KioskTranslator>,
     selectedIndex: Int,
-    onCategorySelected: (Int) -> Unit
+    onCategorySelected: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
 
-    // Auto-scroll logic
     LaunchedEffect(selectedIndex) {
-        listState.animateScrollToItem(
-            index = selectedIndex,
-            scrollOffset = -150
-        )
+        listState.animateScrollToItem(index = selectedIndex, scrollOffset = -150)
     }
 
     LazyRow(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), // Spacing between chips
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         itemsIndexed(categories) { index, kiosk ->
             val isSelected = index == selectedIndex
+            val colors = MaterialTheme.colorScheme
 
-            // Design matches your screenshot: Rounded Rectangle Chips
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (isSelected) GlassTheme.colors.onSurface
-                        else GlassTheme.colors.surfaceVariant.copy(alpha = 0.3f) // Darker gray for unselected
+                        if (isSelected) colors.primary
+                        else colors.surfaceVariant
                     )
                     .clickable { onCategorySelected(index) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = kiosk.displayName,
-                    style = GlassTheme.typography.labelLarge,
-                    color = if (isSelected) GlassTheme.colors.surface else GlassTheme.colors.onSurface,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isSelected) colors.onPrimary else colors.onSurfaceVariant,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 )
             }
         }
