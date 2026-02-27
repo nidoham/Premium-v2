@@ -41,7 +41,7 @@ android {
 }
 
 dependencies {
-    implementation("com.github.nidoham:Extractor:8cc9861531")
+    implementation("com.github.nidoham:Extractor:ddf2d54d3d")
 
     // Timber (Logging)
     implementation(libs.timber)

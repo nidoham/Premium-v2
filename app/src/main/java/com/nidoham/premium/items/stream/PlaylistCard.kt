@@ -19,9 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nidoham.extractor.stream.StreamItem
+import com.nidoham.extractor.util.TimeUtil.formatCount
 
 @Composable
 fun PlaylistCard(item: StreamItem) {
@@ -33,7 +35,10 @@ fun PlaylistCard(item: StreamItem) {
             .clickable { }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+
+        // ── Thumbnail with stacked-pages effect ───────────────────────────────
         Box(
             modifier = Modifier
                 .size(160.dp, 90.dp)
@@ -42,34 +47,52 @@ fun PlaylistCard(item: StreamItem) {
         ) {
             AsyncImage(
                 model = thumbnail,
-                contentDescription = null,
+                contentDescription = item.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
+
+            // Bottom-end badge: stream count if available, else generic "Playlist" label
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                    .padding(4.dp),
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
             ) {
+                val badgeText = if (item.streamCount > 0) {
+                    "${item.streamCount.formatCount()} videos"
+                } else {
+                    "Playlist"
+                }
                 Text(
-                    text = "Playlist",
+                    text = badgeText,
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
-        Column {
+
+        // ── Text metadata ──────────────────────────────────────────────────────
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f),
+        ) {
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = item.uploaderName,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (item.uploaderName.isNotBlank()) {
+                Text(
+                    text = item.uploaderName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
